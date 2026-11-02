@@ -1,0 +1,35 @@
+<h1>Weather Forecast</h1>
+
+<%= form_with url: root_path, method: :get do %>
+  <%= label_tag :address, "Address" %>
+  <%= text_field_tag :address, (params[:address] if params[:address].is_a?(String)), placeholder: "e.g. 350 5th Ave, New York, NY 10118 or 10118" %>
+  <%= button_tag "Search", name: nil %>
+<% end %>
+
+<% if @error %>
+  <p role="alert"><%= @error %></p>
+<% elsif @result %>
+  <% location = @result.location %>
+  <% forecast = @result.forecast %>
+  <section>
+    <h2>Address found</h2>
+    <p><%= location.matched_address %></p>
+    <p>ZIP <%= location.zip %> · <%= number_with_precision(location.latitude, precision: 3) %>, <%= number_with_precision(location.longitude, precision: 3) %></p>
+    <% if location.approximate? %>
+      <p>approximate location (city center)</p>
+    <% end %>
+  </section>
+
+  <section>
+    <h2>Weather</h2>
+    <p><%= forecast.current_temperature.round %>°F · <%= forecast.current_condition %></p>
+    <p>Today: H <%= forecast.today.high.round %>° · L <%= forecast.today.low.round %>°</p>
+    <ul>
+      <% forecast.upcoming.each do |day| %>
+        <li><%= day.date.strftime("%a") %> · <%= day.condition %> · H <%= day.high.round %>° · L <%= day.low.round %>°</li>
+      <% end %>
+    </ul>
+  </section>
+
+  <p><em><%= cache_status(@result) %></em></p>
+<% end %>
