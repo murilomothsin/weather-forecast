@@ -110,7 +110,7 @@ Open-Meteo's free API is offered for non-commercial use (a subscription and an A
 **Cache.**
 
 - Solid Cache, stored in the primary SQLite database. The cache table is the only table in the app, so a separate cache database would be extra configuration for nothing. The cache survives restarts and is shared between processes.
-- Geocoding is cached for 30 days: an address rarely changes ZIP, and it saves a call on repeat searches. The forecast is cached for 30 minutes, as required. Keys are `geocode/v1/<ZIP or lowercased address>` and `forecast/v1/<ZIP>`; the `v1` lets the cache be invalidated by bumping it if the stored format changes.
+- Geocoding is cached for 30 days: an address rarely changes ZIP, and it saves a call on repeat searches. The forecast is cached for 30 minutes, as required. The forecast fetch uses a `race_condition_ttl` of 10 seconds: when a popular ZIP expires, the first request fetches a fresh forecast and the others get the previous entry for up to 10 more seconds, instead of all calling Open-Meteo at once; the page still shows "Served from cache" with the original fetch time. Keys are `geocode/v1/<ZIP or lowercased address>` and `forecast/v1/<ZIP>`; the `v1` lets the cache be invalidated by bumping it if the stored format changes.
 - Failures are never cached: the error is raised inside the `Rails.cache.fetch` block, so nothing is written.
 - A cache hit is "the `fetch` block did not run". There is no `exist?` check before `fetch`, which would be a race and an extra round trip. The entry stores the forecast together with its `fetched_at`, which is what the "Served from cache · fetched N minutes ago" line shows, so the indicator reflects what was actually served. It describes the forecast cache only: a search can reuse a cached geocode and still say "Live data".
 
@@ -126,6 +126,5 @@ Open-Meteo's free API is offered for non-commercial use (a subscription and an A
 
 - Retries with backoff for transient upstream failures such as connect timeout.
 - Serve stale data when an upstream is down, instead of an error, up to a reasonable age limit.
-- `race_condition_ttl` on the forecast cache, to avoid a stampede when a popular ZIP expires.
 - Search by city (needs a policy for which ZIP, or a different cache key).
 - Other countries (needs a different geocoder than the Census one).

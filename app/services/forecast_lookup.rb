@@ -3,6 +3,7 @@ class ForecastLookup
   MAX_LENGTH = 200
   GEOCODE_TTL = 30.days
   FORECAST_TTL = 30.minutes
+  FORECAST_RACE_TTL = 10.seconds
 
   def initialize(census: CensusGeocoder.new, zip_geocoder: ZipGeocoder.new, weather: OpenMeteoClient.new, cache: Rails.cache)
     @census = census
@@ -37,7 +38,7 @@ class ForecastLookup
 
   def fetch_forecast(location)
     cached = true
-    entry = cache.fetch("forecast/v1/#{location.zip}", expires_in: FORECAST_TTL) do
+    entry = cache.fetch("forecast/v1/#{location.zip}", expires_in: FORECAST_TTL, race_condition_ttl: FORECAST_RACE_TTL) do
       cached = false
       { forecast: weather.forecast(latitude: location.latitude, longitude: location.longitude), fetched_at: Time.current }
     end
