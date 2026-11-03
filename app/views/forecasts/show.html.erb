@@ -1,35 +1,35 @@
-<h1>Weather Forecast</h1>
+<h1 class="text-2xl font-bold">Weather Forecast</h1>
 
-<%= form_with url: root_path, method: :get do %>
-  <%= label_tag :address, "Address" %>
-  <%= text_field_tag :address, (params[:address] if params[:address].is_a?(String)), placeholder: "e.g. 350 5th Ave, New York, NY 10118 or 10118" %>
-  <%= button_tag "Search", name: nil %>
+<%= form_with url: root_path, method: :get, class: "flex flex-wrap gap-2" do %>
+  <%= label_tag :address, "Address", class: "w-full text-sm font-medium" %>
+  <%= text_field_tag :address, (params[:address] if params[:address].is_a?(String)), placeholder: "e.g. 350 5th Ave, New York, NY 10118 or 10118", class: "flex-1 min-w-0 border border-gray-300 rounded px-3 py-2" %>
+  <%= button_tag "Search", name: nil, class: "bg-gray-800 text-white rounded px-4 py-2" %>
 <% end %>
 
 <% if @error %>
-  <p role="alert"><%= @error %></p>
+  <p role="alert" class="border border-red-300 rounded p-4 text-red-700"><%= @error %></p>
 <% elsif @result %>
   <% location = @result.location %>
   <% forecast = @result.forecast %>
-  <section>
-    <h2>Address found</h2>
-    <p><%= location.matched_address %></p>
+  <section class="border border-gray-300 rounded p-4 space-y-1">
+    <h2 class="text-sm font-semibold uppercase text-gray-600">Address found</h2>
+    <p class="font-semibold"><%= location.matched_address %></p>
     <p>ZIP <%= location.zip %> · <%= number_with_precision(location.latitude, precision: 3) %>, <%= number_with_precision(location.longitude, precision: 3) %></p>
     <% if location.approximate? %>
-      <p>approximate location (city center)</p>
+      <p class="text-sm text-gray-600">approximate location (city center)</p>
     <% end %>
   </section>
 
-  <section>
-    <h2>Weather</h2>
-    <p><%= forecast.current_temperature.round %>°F · <%= forecast.current_condition %></p>
+  <section class="border border-gray-300 rounded p-4 space-y-1">
+    <h2 class="text-sm font-semibold uppercase text-gray-600">Weather</h2>
+    <p class="text-2xl font-bold"><%= forecast.current_temperature.round %>°F · <%= forecast.current_condition %></p>
     <p>Today: H <%= forecast.today.high.round %>° · L <%= forecast.today.low.round %>°</p>
-    <ul>
+    <ul class="divide-y divide-gray-200 pt-2">
       <% forecast.upcoming.each do |day| %>
-        <li><%= day.date.strftime("%a") %> · <%= day.condition %> · H <%= day.high.round %>° · L <%= day.low.round %>°</li>
+        <li class="py-1"><%= day.date.strftime("%a") %> · <%= day.condition %> · H <%= day.high.round %>° · L <%= day.low.round %>°</li>
       <% end %>
     </ul>
   </section>
 
-  <p><em><%= cache_status(@result) %></em></p>
+  <p class="text-sm text-gray-600"><em><%= cache_status(@result) %></em></p>
 <% end %>
