@@ -46,7 +46,7 @@ GET /?address=...
             2. classify the input: 5-digit ZIP (ZIP+4 allowed), or street address
             3. geocode, cached 30 days under "geocode/v1/<zip or lowercased address>"
                  ZIP             -> ZipGeocoder    (Open-Meteo Geocoding) -> Location, approximate
-                 street address  -> CensusGeocoder (US Census Geocoder)   -> Location, exact
+                 street address  -> CensusGeocoder (US Census Geocoder)   -> Location, street-level
             4. forecast, cached 30 minutes under "forecast/v1/<zip>"
                  miss            -> OpenMeteoClient (Open-Meteo Forecast) -> Forecast
             5. return ForecastResult(location, forecast, cached?, fetched_at)
@@ -63,6 +63,7 @@ Errors are domain errors raised anywhere in that chain and rescued in the contro
 | `InvalidAddress` | blank input, more than 200 characters, or a non-string parameter | 422 |
 | `AddressNotFound` | the geocoder has no match (or the match has no ZIP) | 422 |
 | `ServiceUnavailable` | timeout, network error, non-2xx response, invalid JSON, or an unexpected payload shape from any of the three APIs | 503 |
+| Rate limit | more than 10 searches in a minute from the same IP | 429 |
 
 The user sees a fixed, readable message for each; the upstream's own error text is never shown.
 
@@ -84,7 +85,7 @@ Open-Meteo's free API is offered for non-commercial use (a subscription and an A
 - `app/services/forecast_lookup.rb`: validation, classification, both caches, hit detection.
 - `app/clients/`: `CensusGeocoder`, `ZipGeocoder`, `OpenMeteoClient`, each with a `Response` class that turns vendor JSON into domain objects, and `JsonHttp`, the shared `Net::HTTP` helper.
 - `app/models/`: `Location`, `Forecast`, `DailyForecast`, `ForecastResult` (immutable `Data` objects) and `WeatherCondition` (WMO weather code to English text).
-- `app/errors/`: the three domain errors and their user-facing messages.
+- `app/errors/`: the three domain errors. `AddressNotFound` and `ServiceUnavailable` carry their user-facing messages; the two `InvalidAddress` messages are raised in `ForecastLookup`.
 - `app/views/forecasts/show.html.erb` and `app/helpers/forecasts_helper.rb`: the page and the cache line.
 - `spec/`: clients, service, helper, model and request specs.
 
@@ -113,6 +114,8 @@ Open-Meteo's free API is offered for non-commercial use (a subscription and an A
 - Failures are never cached: the error is raised inside the `Rails.cache.fetch` block, so nothing is written.
 - A cache hit is "the `fetch` block did not run". There is no `exist?` check before `fetch`, which would be a race and an extra round trip. The entry stores the forecast together with its `fetched_at`, which is what the "Served from cache · fetched N minutes ago" line shows, so the indicator reflects what was actually served. It describes the forecast cache only: a search can reuse a cached geocode and still say "Live data".
 
+**Rate limit.** Rails' built-in `rate_limit` allows 10 searches per minute per IP. Only requests with an address count, so opening the empty form is never limited. The counter lives in the same cache, and the search over the limit gets an HTTP 429 with a message.
+
 ## Challenges
 
 - **Solid Cache needs Active Job.** The app was generated without Active Job, but Solid Cache depends on it, and the app failed to boot with eager loading until `active_job/railtie` was enabled in `config/application.rb`.
@@ -122,8 +125,7 @@ Open-Meteo's free API is offered for non-commercial use (a subscription and an A
 ## Next steps
 
 - Retries with backoff for transient upstream failures such as connect timeout.
-- Serve stale data when an upstream is down, instead of an error. (we should have a reasonable threshold for showing a stale data)
+- Serve stale data when an upstream is down, instead of an error, up to a reasonable age limit.
 - `race_condition_ttl` on the forecast cache, to avoid a stampede when a popular ZIP expires.
-- Rate limiting on the search endpoint.
 - Search by city (needs a policy for which ZIP, or a different cache key).
 - Other countries (needs a different geocoder than the Census one).

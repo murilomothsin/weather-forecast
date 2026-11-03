@@ -87,6 +87,13 @@ RSpec.describe "Forecasts", type: :request do
     expect(response.body).to include("Please enter a US street address or a 5-digit ZIP code.")
   end
 
+  it "returns the HTML error page even when the client asks for JSON" do
+    get root_path, params: { address: "" }, headers: { "Accept" => "application/json" }
+
+    expect(response).to have_http_status(:unprocessable_content)
+    expect(response.body).to include("Please enter a US street address or a 5-digit ZIP code.")
+  end
+
   it "returns 422 for a non-string address" do
     get root_path, params: { address: [ "x" ] }
 
@@ -102,5 +109,31 @@ RSpec.describe "Forecasts", type: :request do
     expect(response).to have_http_status(:service_unavailable)
     expect(response.body).to include(ServiceUnavailable.new.message)
     expect(response.body).not_to include("secret detail")
+  end
+
+  it "filters the typed address from the logs" do
+    filtered = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters).filter("address" => street)
+
+    expect(filtered).to eq("address" => "[FILTERED]")
+  end
+
+  describe "rate limit" do
+    it "returns 429 with a message after 10 searches in a minute" do
+      10.times do
+        get root_path, params: { address: "" }
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      get root_path, params: { address: "" }
+
+      expect(response).to have_http_status(:too_many_requests)
+      expect(response.body).to include("Too many searches. Please wait a minute and try again.", 'role="alert"')
+    end
+
+    it "does not count visits without an address" do
+      11.times { get root_path }
+
+      expect(response).to have_http_status(:ok)
+    end
   end
 end

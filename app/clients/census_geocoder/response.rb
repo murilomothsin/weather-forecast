@@ -8,8 +8,10 @@ class CensusGeocoder::Response
     zip = match.dig("addressComponents", "zip")
     raise AddressNotFound if zip.blank?
 
-    Location.new(matched_address: match["matchedAddress"], zip: zip,
-                 latitude: match.dig("coordinates", "y"), longitude: match.dig("coordinates", "x"), approximate: false)
+    latitude, longitude = match.dig("coordinates", "y"), match.dig("coordinates", "x")
+    unexpected_shape! unless latitude.is_a?(Numeric) && longitude.is_a?(Numeric)
+
+    Location.new(matched_address: match["matchedAddress"], zip: zip, latitude: latitude, longitude: longitude, approximate: false)
   end
 
   private

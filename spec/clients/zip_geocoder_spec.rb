@@ -33,6 +33,14 @@ RSpec.describe ZipGeocoder do
     expect { ZipGeocoder.new.locate(zip) }.to raise_error(AddressNotFound)
   end
 
+  it "raises ServiceUnavailable when the match has no coordinates" do
+    body = JSON.parse(file_fixture("open_meteo/geocoding_10118.json").read)
+    body["results"].each { |result| result.except!("latitude", "longitude") }
+    geocoding_request.to_return(body: body.to_json)
+
+    expect { ZipGeocoder.new.locate(zip) }.to raise_error(ServiceUnavailable)
+  end
+
   it "raises ServiceUnavailable when the body is not a JSON object" do
     geocoding_request.to_return(body: "null")
 

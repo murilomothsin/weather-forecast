@@ -7,8 +7,10 @@ class ZipGeocoder::Response
   def to_location
     match = results.find { |result| result.is_a?(Hash) && Array(result["postcodes"]).include?(@zip) } or raise AddressNotFound
 
-    Location.new(matched_address: "#{match["name"]}, #{match["admin1"]}", zip: @zip,
-                 latitude: match["latitude"], longitude: match["longitude"], approximate: true)
+    latitude, longitude = match["latitude"], match["longitude"]
+    unexpected_shape! unless latitude.is_a?(Numeric) && longitude.is_a?(Numeric)
+
+    Location.new(matched_address: "#{match["name"]}, #{match["admin1"]}", zip: @zip, latitude: latitude, longitude: longitude, approximate: true)
   end
 
   private

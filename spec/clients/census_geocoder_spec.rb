@@ -33,6 +33,14 @@ RSpec.describe CensusGeocoder do
     expect { CensusGeocoder.new.locate(address) }.to raise_error(AddressNotFound)
   end
 
+  it "raises ServiceUnavailable when the match has no coordinates" do
+    body = JSON.parse(file_fixture("census/match.json").read)
+    body["result"]["addressMatches"][0].delete("coordinates")
+    census_request.to_return(body: body.to_json)
+
+    expect { CensusGeocoder.new.locate(address) }.to raise_error(ServiceUnavailable)
+  end
+
   it "raises ServiceUnavailable on an unexpected response shape" do
     census_request.to_return(body: "{}")
 
